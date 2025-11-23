@@ -1,0 +1,101 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  tags:
+    - 'v*'
+
+env:
+  PROJECT_ID: cinefilm-platform
+  REGION: us-central1
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push Docker image
+        working-directory: backend
+        run: |
+          gcloud builds submit \
+            --config=cloudbuild.yaml \
+            --substitutions=SHORT_SHA=${{ github.sha }} \
+            --tag gcr.io/$PROJECT_ID/backend:prod-${{ github.sha }} \
+            --tag gcr.io/$PROJECT_ID/backend:latest
+
+      - name: Deploy to Cloud Run (Production)
+        run: |
+          gcloud run deploy cinefilm-backend \
+            --image gcr.io/$PROJECT_ID/backend:prod-${{ github.sha }} \
+            --platform managed \
+            --region $REGION \
+            --service-account cinefilm-backend@$PROJECT_ID.iam.gserviceaccount.com \
+            --set-env-vars ENVIRONMENT=production \
+            --set-secrets=STRIPE_API_KEY=stripe-api-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest \
+            --allow-unauthenticated \
+            --min-instances 1 \
+            --max-instances 100 \
+            --cpu 2 \
+            --memory 2Gi
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: web-app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: web-app
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Next.js
+        working-directory: web-app
+        env:
+          NEXT_PUBLIC_ENVIRONMENT: production
+          NEXT_PUBLIC_API_URL: https://api.cinefilm.tech
+          NEXT_OUTPUT: export
+        run: pnpm build
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Deploy to Firebase Hosting (Production)
+        working-directory: web-app
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only hosting:app --project $PROJECT_ID --token $FIREBASE_TOKEN
