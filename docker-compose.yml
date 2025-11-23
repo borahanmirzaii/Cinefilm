@@ -20,12 +20,15 @@ services:
       - API_PORT=8000
       - GOOGLE_APPLICATION_CREDENTIALS=/app/service-account-key.json
       - FIREBASE_PROJECT_ID=cinefilm-platform
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulators:9099
+      - FIRESTORE_EMULATOR_HOST=firebase-emulators:8080
     env_file:
       - ./backend/.env
     # Note: .env file is optional - will use environment variables if not present
     depends_on:
       - postgres
       - redis
+      - firebase-emulators
     networks:
       - cinefilm-network
     restart: unless-stopped
@@ -47,12 +50,14 @@ services:
     environment:
       - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true
       - WATCHPACK_POLLING=true
     env_file:
       - ./web-app/.env.local
     # Note: .env.local file is optional - will use environment variables if not present
     depends_on:
       - backend-api
+      - firebase-emulators
     networks:
       - cinefilm-network
     restart: unless-stopped
@@ -86,6 +91,36 @@ services:
       - cinefilm-network
     restart: unless-stopped
 
+  # Firebase Emulators
+  firebase-emulators:
+    image: node:22-alpine
+    container_name: cinefilm-firebase-emulators
+    ports:
+      - "9099:9099"  # Auth
+      - "8080:8080"  # Firestore
+      - "9199:9199"  # Storage
+      - "5001:5001"  # Functions
+      - "4000:4000"  # UI
+    working_dir: /app
+    command: >
+      sh -c "
+        npm install -g firebase-tools@latest &&
+        firebase emulators:start --only auth,firestore,storage --project cinefilm-platform
+      "
+    volumes:
+      - .:/app
+      - firebase_emulator_data:/root/.cache/firebase/emulators
+    environment:
+      - FIREBASE_TOKEN=${FIREBASE_TOKEN:-}
+    networks:
+      - cinefilm-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   # n8n (workflow automation)
   n8n:
     image: n8nio/n8n:latest
@@ -111,6 +146,7 @@ volumes:
   postgres_data:
   redis_data:
   n8n_data:
+  firebase_emulator_data:
 
 networks:
   cinefilm-network:
