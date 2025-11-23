@@ -94,4 +94,3 @@ Thumbs.db
 
 # dataconnect generated files
 .dataconnect
-.github/workflows/*.yml
