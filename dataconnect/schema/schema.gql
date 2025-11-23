@@ -1,0 +1,67 @@
+type User @table {
+  displayName: String!
+  email: String!
+  createdAt: Timestamp!
+  bio: String
+  photoUrl: String
+  skills: [String]
+  portfolioLink: String
+}
+
+type Project @table {
+  title: String!
+  logline: String!
+  targetLengthMinutes: Int!
+  createdAt: Timestamp!
+  creator: User
+  description: String
+  genre: String
+  status: String
+}
+
+type ProjectMember @table(key: ["project", "user"]) {
+  project: Project!
+  user: User!
+  role: String!
+  joinedAt: Timestamp!
+}
+
+type Script @table {
+  title: String!
+  versionNumber: Int!
+  fileUrl: String!
+  createdAt: Timestamp!
+  project: Project
+  uploader: User
+  notes: String
+}
+
+type Asset @table {
+  name: String!
+  fileUrl: String!
+  assetType: String!
+  createdAt: Timestamp!
+  project: Project
+  uploader: User
+  description: String
+}
+
+type Task @table {
+  description: String!
+  status: String!
+  createdAt: Timestamp!
+  project: Project
+  assigner: User
+  assignee: User
+  dueDate: Timestamp
+  completedAt: Timestamp
+}
+
+type Comment @table {
+  content: String!
+  createdAt: Timestamp!
+  user: User
+  script: Script
+  asset: Asset
+  parentCommentId: UUID
+}

@@ -1,0 +1,42 @@
+mutation CreateProject($title: String!, $logline: String!, $targetLengthMinutes: Int!, $description: String, $genre: String, $status: String) @auth(level: USER) {
+  project_insert(data: {title: $title, logline: $logline, targetLengthMinutes: $targetLengthMinutes, description: $description, genre: $genre, status: $status, creatorId_expr: "auth.uid"})
+}
+
+query ListProjects @auth(level: USER) {
+  projects {
+    id
+    title
+    logline
+    targetLengthMinutes
+    description
+    genre
+    status
+  }
+}
+
+mutation JoinProject($projectId: UUID!, $role: String!) @auth(level: USER) {
+  projectMember_insert(data: {projectId: $projectId, userId_expr: "auth.uid", role: $role, joinedAt_expr: "request.time"})
+}
+
+query GetProject($id: UUID!) @auth(level: USER) {
+  project(id: $id) {
+    id
+    title
+    logline
+    targetLengthMinutes
+    description
+    genre
+    status
+    creator {
+      id
+      displayName
+    }
+    projectMembers_on_project {
+      user {
+        id
+        displayName
+      }
+      role
+    }
+  }
+}

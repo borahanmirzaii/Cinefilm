@@ -1,0 +1,48 @@
+mutation CreateDemoData @transaction @auth(level: PUBLIC, insecureReason: "This mutation is for demo purposes and does not require authentication") {
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      displayName: "demouser1",
+      email: "demouser1@example.com",
+      createdAt: "2024-04-26T00:00:00Z"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      displayName: "demouser2",
+      email: "demouser2@example.com",
+      createdAt: "2024-04-26T00:00:00Z"
+    }
+  ])
+  project_insertMany(data: [
+    {
+      id: "650e8400-e29b-41d4-a716-446655440000",
+      creatorId: "550e8400-e29b-41d4-a716-446655440000",
+      title: "Demo Project 1",
+      logline: "A demo project",
+      targetLengthMinutes: 90,
+      createdAt: "2024-04-26T00:00:00Z"
+    },
+    {
+      id: "650e8400-e29b-41d4-a716-446655440001",
+      creatorId: "550e8400-e29b-41d4-a716-446655440001",
+      title: "Demo Project 2",
+      logline: "Another demo project",
+      targetLengthMinutes: 120,
+      createdAt: "2024-04-26T00:00:00Z"
+    }
+  ])
+  projectMember_insertMany(data: [
+    {
+      projectId: "650e8400-e29b-41d4-a716-446655440000",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      role: "writer",
+      joinedAt: "2024-04-26T00:00:00Z"
+    },
+    {
+      projectId: "650e8400-e29b-41d4-a716-446655440001",
+      userId: "550e8400-e29b-41d4-a716-446655440001",
+      role: "director",
+      joinedAt: "2024-04-26T00:00:00Z"
+    }
+  ])
+}
