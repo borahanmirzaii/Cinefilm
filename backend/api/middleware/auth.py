@@ -13,25 +13,42 @@ logger = logging.getLogger(__name__)
 def init_firebase():
     """Initialize Firebase Admin SDK"""
     if not firebase_admin._apps:
-        cred_path = settings.google_application_credentials
-        if cred_path and os.path.exists(cred_path):
-            logger.info(f"Initializing Firebase Admin SDK with credentials file: {cred_path}")
-            cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred, {
-                "projectId": settings.firebase_project_id,
-            })
-        else:
-            # Use default credentials (for Cloud Run or local with gcloud auth)
-            logger.info("Initializing Firebase Admin SDK with default credentials")
+        # Check if we're using Firebase Emulator
+        emulator_host = os.getenv("FIREBASE_AUTH_EMULATOR_HOST")
+        
+        if emulator_host:
+            # Using Firebase Emulator - no credentials needed
+            logger.info(f"Initializing Firebase Admin SDK with Auth Emulator: {emulator_host}")
             try:
-                # Explicitly set project ID when using default credentials
+                # Initialize without credentials when using emulator
                 firebase_admin.initialize_app(options={
                     "projectId": settings.firebase_project_id,
                 })
-                logger.info(f"Firebase Admin SDK initialized successfully with project ID: {settings.firebase_project_id}")
+                logger.info(f"Firebase Admin SDK initialized with emulator (project: {settings.firebase_project_id})")
             except Exception as e:
-                logger.error(f"Failed to initialize Firebase Admin SDK: {e}")
+                logger.error(f"Failed to initialize Firebase Admin SDK with emulator: {e}")
                 raise
+        else:
+            # Production mode - need credentials
+            cred_path = settings.google_application_credentials
+            if cred_path and os.path.exists(cred_path):
+                logger.info(f"Initializing Firebase Admin SDK with credentials file: {cred_path}")
+                cred = credentials.Certificate(cred_path)
+                firebase_admin.initialize_app(cred, {
+                    "projectId": settings.firebase_project_id,
+                })
+            else:
+                # Use default credentials (for Cloud Run or local with gcloud auth)
+                logger.info("Initializing Firebase Admin SDK with default credentials")
+                try:
+                    # Explicitly set project ID when using default credentials
+                    firebase_admin.initialize_app(options={
+                        "projectId": settings.firebase_project_id,
+                    })
+                    logger.info(f"Firebase Admin SDK initialized successfully with project ID: {settings.firebase_project_id}")
+                except Exception as e:
+                    logger.error(f"Failed to initialize Firebase Admin SDK: {e}")
+                    raise
     else:
         logger.info("Firebase Admin SDK already initialized")
 
