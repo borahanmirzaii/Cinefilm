@@ -18,6 +18,8 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/cinefilm
       - API_HOST=0.0.0.0
       - API_PORT=8000
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/service-account-key.json
+      - FIREBASE_PROJECT_ID=cinefilm-platform
     env_file:
       - ./backend/.env
     # Note: .env file is optional - will use environment variables if not present
