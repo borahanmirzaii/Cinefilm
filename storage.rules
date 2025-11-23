@@ -1,12 +1,52 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write: if false;
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isValidImageUpload() {
+      return request.resource.size < 10 * 1024 * 1024 && // 10MB max
+             request.resource.contentType.matches('image/.*');
+    }
+
+    function isValidVideoUpload() {
+      return request.resource.size < 500 * 1024 * 1024 && // 500MB max
+             request.resource.contentType.matches('video/.*');
+    }
+
+    function isValidAudioUpload() {
+      return request.resource.size < 50 * 1024 * 1024 && // 50MB max
+             request.resource.contentType.matches('audio/.*');
+    }
+
+    // User assets: users/{userId}/assets/{filename}
+    match /users/{userId}/assets/{filename} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow write: if isAuthenticated() &&
+                      isOwner(userId) &&
+                      (isValidImageUpload() || isValidVideoUpload() || isValidAudioUpload());
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+
+    // Project assets: projects/{projectId}/assets/{filename}
+    match /projects/{projectId}/assets/{filename} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() &&
+                      (isValidImageUpload() || isValidVideoUpload() || isValidAudioUpload());
+      allow delete: if isAuthenticated();
+    }
+
+    // Public assets (generated content)
+    match /public/{filename} {
+      allow read: if true;
+      allow write: if false; // Only backend service account
     }
   }
 }

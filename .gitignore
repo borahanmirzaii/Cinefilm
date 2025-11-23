@@ -78,9 +78,20 @@ google-credentials.json
 
 # Python virtual environment
 venv/
+.venv/
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# uv
+.uv/
+
+# pnpm
+.pnpm-store/
+pnpm-lock.yaml
 
 # IDE
 .vscode/
@@ -94,3 +105,20 @@ Thumbs.db
 
 # dataconnect generated files
 .dataconnect
+
+# Service account keys
+cinefilm-sa-key.json
+*-sa-key.json
+
+# Docker
+.dockerignore
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# n8n
+n8n/workflows/*.json
+!n8n/workflows/.gitkeep

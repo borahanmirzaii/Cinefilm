@@ -1,0 +1,116 @@
+services:
+  # FastAPI Backend
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: cinefilm-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - /app/.venv # Don't mount venv
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/cinefilm
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    env_file:
+      - ./backend/.env
+    # Note: .env file is optional - will use environment variables if not present
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - cinefilm-network
+    restart: unless-stopped
+    command: uv run uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./web-app
+      dockerfile: Dockerfile
+      target: development
+    container_name: cinefilm-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web-app:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://backend-api:8000
+      - WATCHPACK_POLLING=true
+    env_file:
+      - ./web-app/.env.local
+    # Note: .env.local file is optional - will use environment variables if not present
+    depends_on:
+      - backend-api
+    networks:
+      - cinefilm-network
+    restart: unless-stopped
+    command: pnpm dev
+
+  # PostgreSQL (local mirror of Cloud SQL)
+  postgres:
+    image: postgres:16-alpine
+    container_name: cinefilm-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: cinefilm
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cinefilm-network
+    restart: unless-stopped
+
+  # Redis (caching and rate limiting)
+  redis:
+    image: redis:7-alpine
+    container_name: cinefilm-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cinefilm-network
+    restart: unless-stopped
+
+  # n8n (workflow automation)
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: cinefilm-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=changeme
+      - WEBHOOK_URL=http://backend-api:8000
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/home/node/.n8n/workflows
+    networks:
+      - cinefilm-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  n8n_data:
+
+networks:
+  cinefilm-network:
+    driver: bridge
+
