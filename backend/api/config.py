@@ -43,6 +43,16 @@ class Settings(BaseSettings):
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
+    redis_ttl_default: int = 3600  # Default TTL in seconds (1 hour)
+
+    # n8n
+    n8n_url: str = "http://n8n:5678"
+    n8n_api_key: str = ""
+
+    # ADK / Vertex AI
+    vertex_ai_project_id: str = "cinefilm-platform"
+    vertex_ai_location: str = "us-central1"
+    gemini_model: str = "gemini-1.5-pro"
 
     # CORS
     cors_origins: str = "http://localhost:3000,https://cinefilm.tech,https://*.cinefilm.tech"

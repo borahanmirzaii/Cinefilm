@@ -35,6 +35,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Rate limiting middleware (before cache middleware)
+from api.middleware.rate_limit import RateLimitMiddleware, DEFAULT_ENDPOINT_LIMITS
+app.add_middleware(
+    RateLimitMiddleware,
+    endpoint_limits=DEFAULT_ENDPOINT_LIMITS,
+)
+
+# Cache middleware (after rate limiting)
+from api.middleware.cache import CacheMiddleware
+app.add_middleware(
+    CacheMiddleware,
+    cache_paths=["/api/projects"],  # Cache project endpoints
+    ttl=300,  # 5 minutes for project data
+)
+
 
 # Error handlers
 @app.exception_handler(RequestValidationError)
@@ -67,6 +82,18 @@ async def general_exception_handler(request: Request, exc: Exception):
 # Include routers
 app.include_router(health.router)
 app.include_router(projects.router)
+
+# Include webhook router
+from api.routers import webhooks
+app.include_router(webhooks.router)
+
+# Include agents router
+from api.routers import agents
+app.include_router(agents.router)
+
+# Include admin router
+from api.routers import admin
+app.include_router(admin.router)
 
 
 @app.get("/")

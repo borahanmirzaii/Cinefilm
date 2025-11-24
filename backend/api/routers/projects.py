@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from api.models.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from api.services.project_service import ProjectService
+from api.services.workflow_service import WorkflowService
 from api.middleware.auth import get_current_user
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -16,6 +17,46 @@ async def create_project(
     """Create a new project"""
     user_id = current_user["uid"]
     project = await ProjectService.create_project(user_id, project_data)
+
+    # Trigger n8n workflow for project creation (async, don't wait)
+    try:
+        # Convert datetime objects to ISO strings for JSON serialization
+        import json
+        from datetime import datetime
+        
+        project_dict = project.model_dump(mode='json')  # Use mode='json' to serialize datetimes
+        
+        # Additional cleanup for any remaining datetime-like objects
+        def serialize_datetime(obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            elif hasattr(obj, '_seconds'):  # Firestore Timestamp
+                return datetime.fromtimestamp(obj._seconds).isoformat()
+            elif hasattr(obj, 'isoformat'):  # Other datetime-like objects
+                return obj.isoformat()
+            return obj
+        
+        # Recursively serialize datetime objects
+        def clean_dict(d):
+            if isinstance(d, dict):
+                return {k: clean_dict(v) for k, v in d.items()}
+            elif isinstance(d, list):
+                return [clean_dict(item) for item in d]
+            else:
+                return serialize_datetime(d)
+        
+        project_dict = clean_dict(project_dict)
+        
+        await WorkflowService.trigger_project_created_workflow(
+            project_id=project.id,
+            user_id=user_id,
+            project_data=project_dict,
+        )
+    except Exception as e:
+        # Log but don't fail the request if workflow trigger fails
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to trigger project workflow: {e}")
+
     return project
 
 

@@ -18,8 +18,19 @@ def init_firebase():
         
         if emulator_host:
             # Using Firebase Emulator - no credentials needed
+            # Firebase Admin SDK automatically detects FIREBASE_AUTH_EMULATOR_HOST env var
             logger.info(f"Initializing Firebase Admin SDK with Auth Emulator: {emulator_host}")
             try:
+                # Normalize emulator host format (remove http:// if present)
+                import re
+                match = re.match(r'(?:https?://)?([^:]+):?(\d+)?', emulator_host)
+                if match:
+                    host = match.group(1)
+                    port = match.group(2) or "9099"
+                    # Set environment variable in format Firebase Admin SDK expects (host:port)
+                    os.environ["FIREBASE_AUTH_EMULATOR_HOST"] = f"{host}:{port}"
+                    logger.info(f"Using Firebase Auth Emulator at {host}:{port}")
+                
                 # Initialize without credentials when using emulator
                 firebase_admin.initialize_app(options={
                     "projectId": settings.firebase_project_id,

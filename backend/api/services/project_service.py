@@ -3,10 +3,18 @@ from firebase_admin import firestore
 from typing import List, Optional
 from datetime import datetime
 from api.models.project import ProjectCreate, ProjectUpdate, ProjectResponse
+from api.middleware.cache import invalidate_project_cache, invalidate_user_cache
 
 
 def get_db():
     """Get Firestore client (lazy initialization)"""
+    import os
+    # Configure Firestore emulator if environment variable is set
+    emulator_host = os.getenv("FIRESTORE_EMULATOR_HOST")
+    if emulator_host:
+        # Firestore emulator is automatically used when FIRESTORE_EMULATOR_HOST is set
+        # Format: host:port (e.g., firebase-emulators:8080)
+        pass
     return firestore.client()
 
 
@@ -30,6 +38,10 @@ class ProjectService:
         project_doc = db.collection("projects").document(project_id).get()
         project_dict = project_doc.to_dict()
         project_dict["id"] = project_id
+
+        # Invalidate cache
+        invalidate_user_cache(user_id)
+        invalidate_project_cache(project_id)
 
         return ProjectResponse(**project_dict)
 
@@ -90,6 +102,10 @@ class ProjectService:
         updated_dict = updated_doc.to_dict()
         updated_dict["id"] = project_id
 
+        # Invalidate cache
+        invalidate_user_cache(user_id)
+        invalidate_project_cache(project_id)
+
         return ProjectResponse(**updated_dict)
 
     @staticmethod
@@ -106,5 +122,10 @@ class ProjectService:
             return False
 
         db.collection("projects").document(project_id).delete()
+
+        # Invalidate cache
+        invalidate_user_cache(user_id)
+        invalidate_project_cache(project_id)
+
         return True
 

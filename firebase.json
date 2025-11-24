@@ -9,12 +9,14 @@
       "rootDirectory": "./"
     },
     "auth": {
+      "host": "0.0.0.0",
       "port": 9099
     },
     "functions": {
       "port": 5001
     },
     "firestore": {
+      "host": "0.0.0.0",
       "port": 8080
     },
     "database": {
@@ -27,6 +29,7 @@
       "port": 8085
     },
     "storage": {
+      "host": "0.0.0.0",
       "port": 9199
     },
     "eventarc": {
@@ -36,7 +39,9 @@
       "port": 9499
     },
     "ui": {
-      "enabled": true
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 4000
     },
     "singleProjectMode": true
   },
